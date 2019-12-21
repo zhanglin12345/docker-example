@@ -1,0 +1,13 @@
+version: '3'
+networks:
+  my-network:
+    external: true
+services:
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - /Users/linzhang/Documents/MBUX/devops/docker-compose/mongodb:/data/db
+    networks:
+      - my-network

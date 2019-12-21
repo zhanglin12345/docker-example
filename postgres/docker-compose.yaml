@@ -1,0 +1,16 @@
+version: "3"
+networks:
+  my-network:
+    external: true
+services:
+  db:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - /Users/linzhang/Documents/MBUX/db:/var/lib/postgresql/data
+    networks:
+      - my-network

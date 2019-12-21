@@ -1,0 +1,120 @@
+version: "3"
+
+networks:
+  my-network:
+    external: true
+
+services:
+
+  #######################################
+  # Postgres: The database used by Kong
+  #######################################
+  # postgres_db_1:
+  #   image: postgres:latest
+  #   restart: on-failure
+  #   networks:
+  #     - my-network
+  #   environment:
+  #     POSTGRES_USER: kong
+  #     POSTGRES_DB: kong
+  #     POSTGRES_PASSWORD: kong
+  #   ports:
+  #     - "5432:5432"
+  #   healthcheck:
+  #     test: ["CMD", "pg_isready", "-U", "kong"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5
+
+  #######################################
+  # Kong database migration
+  #######################################
+  kong-migration:
+    image: kong:latest
+    command: "kong migrations up"
+    networks:
+    - my-network
+    restart: on-failure
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_DATABASE: kong
+      KONG_PG_HOST: postgres_db_1
+      KONG_PG_PASSWORD: kong
+      KONG_PG_USER: kong
+    external_links:
+    - postgres_db_1
+
+  #######################################
+  # Kong: The API Gateway
+  #######################################
+  kong:
+    image: kong:latest
+    restart: on-failure
+    networks:
+    - my-network
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_DATABASE: kong
+      KONG_PG_HOST: postgres_db_1
+      KONG_PG_PASSWORD: kong
+      KONG_PG_USER: kong
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+      KONG_PROXY_LISTEN_SSL: 0.0.0.0:8443
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      # KONG_ADMIN_ACCESS_LOG: '/etc/stdout'
+      # KONG_ADMIN_ERROR_LOG: '/etc/stderr'
+      # KONG_PROXY_ACCESS_LOG: '/etc/stdout'
+      # KONG_PROXY_ERROR_LOG: '/etc/stderr'
+    external_links:
+      - postgres_db_1
+    # logging:
+    #   driver: syslog
+    #   options:
+    #     syslog-address: udp://192.168.10.47:514
+    volumes:
+      - /etc/kong
+    # depends_on:
+    #   - kong-migration
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001"]
+      interval: 5s
+      timeout: 2s
+      retries: 15
+    ports:
+    - "8001:8001"
+    - "8000:8000"
+
+  #######################################
+  # Konga database prepare
+  #######################################
+  # konga-prepare:
+  #   image: pantsel/konga:next
+  #   command: "-c prepare --adapter postgress -a kong -u postgresql://kong@postgres_db_1:5432/konga_db"
+  #   networks:
+  #     - my-network
+  #   restart: on-failure
+  #   external_links:
+  #     - postgres_db_1
+
+  #######################################
+  # Konga: Kong GUI
+  #######################################
+  konga:
+    image: pantsel/konga:next
+    restart: always
+    networks:
+    - my-network
+    environment:
+      DB_ADAPTER: postgres
+      DB_HOST: postgres_db_1
+      DB_USER: kong
+      DB_PASSWORD: kong
+      TOKEN_SECRET: km1GUr4RkcQD7DewhJPNXrCuZwcKmqjb
+      DB_DATABASE: konga_db
+      NODE_ENV: development
+    external_links:
+    - postgres_db_1
+    - konga_kong_1
+    ports:
+    - "1337:1337"

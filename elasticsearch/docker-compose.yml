@@ -1,0 +1,25 @@
+version: '2'
+
+networks:
+  logstash-kafka:
+    external: true
+
+services:
+  elasticsearch:
+    image: elasticsearch:7.3.1
+    networks:
+      - logstash-kafka
+    volumes: 
+      - ./data/elasticsearch:/usr/share/elasticsearch/data
+    command: elasticsearch
+    environment:
+      - cluster.name=docker-cluster
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+      - "9300:9300"
